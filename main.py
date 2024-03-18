@@ -1,172 +1,192 @@
-from selenium import webdriver  # ウェブブラウザ🌐を自動操作するためのツールをインポート
-from selenium.webdriver.firefox.options import (
-    Options,
-)  # Firefoxブラウザ🌐のオプションを設定するためのツールをインポート
-from selenium.webdriver.common.by import (
-    By,
-)  # HTML要素🔍を指定するための方法を提供するツールをインポート
-from selenium.webdriver.support.ui import (
-    WebDriverWait,
-)  # 特定の条件が満たされるまで待つためのツールをインポート
-from selenium.webdriver.support import (
-    expected_conditions as EC,
-)  # 特定の条件を指定するためのツールをインポート
-from selenium.common.exceptions import (
-    NoAlertPresentException,
-    TimeoutException,
-)  # 特定の例外を扱うためのツールをインポート
-import time  # 時間⏰に関する操作を行うためのモジュールをインポート
-import logging  # ログ📝を取るためのモジュールをインポート
-import configparser  # 設定ファイル📁を扱うためのモジュールをインポート
+import configparser
+import logging
+import time
+from selenium import webdriver
+from selenium.common.exceptions import NoAlertPresentException, TimeoutException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
+from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 # 設定ファイルを読み込む
 config = configparser.ConfigParser()
 config.read("config.ini")
 
-# ログの設定を行う。ログレベル、フォーマットを指定
+# ログの設定を行う
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
 )
-logging.debug("設定ファイルを読み込みました。")
+logging.debug("設定ファイルを読み込みました")
 
 
-# TwitterBotクラスを定義
 class TwitterBot:
-    # 初期化メソッド。オブジェクトが生成された時に自動的に呼び出される
     def __init__(self, account):
-        logging.debug("TwitterBotの初期化を開始します。")
-        self.account = account  # アカウント情報👥
-        self.driver = self._init_driver()  # WebDriverの初期化
-        logging.debug("TwitterBotの初期化が完了しました。")
+        logging.debug(f"{account['username']} - TwitterBotの初期化を開始します")
+        self.account = account
+        self.driver = self._init_driver()
+        logging.debug(f"{account['username']} - TwitterBotの初期化が完了しました")
 
-    # WebDriverを初期化するための内部メソッド
     def _init_driver(self):
-        logging.debug("WebDriverの初期化を開始します。")
-        firefox_options = Options()  # Firefoxのオプションを設定
-        firefox_options.binary_location = config["BROWSER"][
-            "tor_path"
-        ]  # Torブラウザ🌐のパスを設定
-        firefox_options.set_preference(
-            "network.proxy.type", config.getint("PROXY", "type")
-        )  # プロキシ設定を有効にする
-        firefox_options.set_preference(
-            "network.proxy.socks", config["PROXY"]["host"]
-        )  # SOCKSプロキシのホストを設定
-        firefox_options.set_preference(
+        logging.debug(f"{self.account['username']} - WebDriverの初期化を開始します")
+        options = Options()
+        options.binary_location = config["BROWSER"]["tor_path"]
+        options.set_preference("network.proxy.type", config.getint("PROXY", "type"))
+        options.set_preference("network.proxy.socks", config["PROXY"]["host"])
+        options.set_preference(
             "network.proxy.socks_port", config.getint("PROXY", "port")
-        )  # SOCKSプロキシのポートを設定
-        firefox_options.set_preference(
+        )
+        options.set_preference(
             "intl.accept_languages", config["LANGUAGE"]["accept_languages"]
-        )  # 言語設定を英語にする
-        logging.debug("WebDriverのオプション設定が完了しました。")
-        driver = webdriver.Firefox(options=firefox_options)  # Firefox WebDriverを返す
-        logging.debug("WebDriverの初期化が完了しました。")
+        )
+
+        profile_path = config["BROWSER"]["profile_path"]
+        firefox_profile = FirefoxProfile(profile_path)
+        options.profile = firefox_profile
+
+        logging.debug(
+            f"{self.account['username']} - WebDriverのオプション設定が完了しました"
+        )
+        driver = webdriver.Firefox(options=options)
+        logging.debug(f"{self.account['username']} - WebDriverの初期化が完了しました")
         return driver
 
-    # ログイン処理を行うメソッド
     def login(self):
-        logging.debug("ログイン処理を開始します。")
-        self.driver.get(
-            "https://twitter.com/login"
-        )  # Twitterのログインページにアクセス
-        logging.debug("Twitterのログインページにアクセスしました。")
-        self._handle_alert()  # アラート処理を行う
-        self._fill_login_form()  # ログインフォームを埋める
-        self._submit_login_form()  # ログインフォームを送信する
-        logging.debug("ログイン処理が完了しました。")
+        logging.debug(f"{self.account['username']} - ログイン処理を開始します")
+        self.driver.get("https://twitter.com/login")
+        logging.debug(
+            f"{self.account['username']} - Twitterのログインページにアクセスしました"
+        )
+        self._handle_alert()
+        self._fill_login_form()
+        self._submit_login_form()
+        logging.debug(f"{self.account['username']} - ログイン処理が完了しました")
 
-    # アラート処理を行う内部メソッド
     def _handle_alert(self):
-        logging.debug("アラート処理を開始します。")
+        logging.debug(f"{self.account['username']} - アラート処理を開始します")
         try:
-            alert = self.driver.switch_to.alert  # アラートがあれば取得
-            alert.accept()  # アラートを承認
-            logging.debug("アラートを承認しました。")
+            alert = self.driver.switch_to.alert
+            alert.accept()
+            logging.debug(f"{self.account['username']} - アラートを承認しました")
         except NoAlertPresentException:
             logging.info(
-                "ログイン時にアラートは表示されませんでした。"
-            )  # アラートがなければログに記録
+                f"{self.account['username']} - ログイン時にアラートは表示されませんでした"
+            )
         except Exception as e:
             logging.error(
-                f"ログイン処理中に予期しないエラーが発生しました: {e}"
-            )  # その他のエラーが発生した場合はログに記録
+                f"{self.account['username']} - ログイン処理中に予期しないエラーが発生しました: {type(e).__name__} - {str(e)}"
+            )
 
-    # ログインフォームを埋める内部メソッド
     def _fill_login_form(self):
-        logging.debug("ログインフォームの入力を開始します。")
-        username_field = self.wait_for_element(
-            (By.NAME, "session[username_or_email]"), condition="visible"
-        )  # ユーザー名入力欄を待機して取得
-        password_field = self.driver.find_element(
-            By.NAME, "session[password]"
-        )  # パスワード入力欄を取得
-        username_field.send_keys(self.account["username"])  # ユーザー名を入力
-        password_field.send_keys(self.account["password"])  # パスワードを入力
-        logging.debug("ログインフォームの入力が完了しました。")
+        logging.debug(
+            f"{self.account['username']} - ログインフォームの入力を開始します"
+        )
+        try:
+            username_field = self.wait_for_element(
+                (By.NAME, "session[username_or_email]"), condition="visible"
+            )
+            password_field = self.driver.find_element(By.NAME, "session[password]")
+            username_field.send_keys(self.account["username"])
+            password_field.send_keys(self.account["password"])
+            logging.debug(
+                f"{self.account['username']} - ログインフォームの入力が完了しました"
+            )
+        except Exception as e:
+            logging.error(
+                f"{self.account['username']} - ログインフォームの入力中にエラーが発生しました: {type(e).__name__} - {str(e)}"
+            )
+            raise
 
-    # ログインフォームを送信する内部メソッド
     def _submit_login_form(self):
-        logging.debug("ログインフォームの送信を開始します。")
-        login_button = self.driver.find_element(
-            By.XPATH, '//div[@data-testid="LoginForm_Login_Button"]'
-        )  # ログインボタンを取得
-        login_button.click()  # ログインボタンをクリック
-        logging.debug("ログインフォームを送信しました。")
+        logging.debug(
+            f"{self.account['username']} - ログインフォームの送信を開始します"
+        )
+        try:
+            login_button = self.driver.find_element(
+                By.XPATH, '//div[@data-testid="LoginForm_Login_Button"]'
+            )
+            login_button.click()
+            logging.debug(
+                f"{self.account['username']} - ログインフォームを送信しました"
+            )
+        except Exception as e:
+            logging.error(
+                f"{self.account['username']} - ログインフォームの送信中にエラーが発生しました: {type(e).__name__} - {str(e)}"
+            )
+            raise
 
-    # いいねとリツイートを行うメソッド
     def like_and_retweet(self):
-        logging.debug("いいねとリツイート処理を開始します。")
+        logging.debug(
+            f"{self.account['username']} - いいねとリツイート処理を開始します"
+        )
         try:
             like_button = self.wait_for_element(
                 (By.XPATH, '//div[@data-testid="like"]'), condition="clickable"
-            )  # いいねボタンを待機して取得
-            like_button.click()  # いいねボタンをクリック
-            logging.debug("いいねをクリックしました。")
+            )
+            like_button.click()
+            logging.debug(f"{self.account['username']} - いいねをクリックしました")
+        except Exception as e:
+            logging.warning(
+                f"{self.account['username']} - いいねボタンのクリック中にエラーが発生しました: {type(e).__name__} - {str(e)}"
+            )
+
+        try:
             retweet_button = self.wait_for_element(
                 (By.XPATH, '//div[@data-testid="retweet"]'), condition="clickable"
-            )  # リツイートボタンを待機して取得
-            retweet_button.click()  # リツイートボタンをクリック
-            logging.debug("リツイートをクリックしました。")
+            )
+            retweet_button.click()
+            logging.debug(f"{self.account['username']} - リツイートをクリックしました")
+        except Exception as e:
+            logging.warning(
+                f"{self.account['username']} - リツイートボタンのクリック中にエラーが発生しました: {type(e).__name__} - {str(e)}"
+            )
+
+        try:
             confirm_retweet_button = self.wait_for_element(
                 (By.XPATH, '//div[@data-testid="retweetConfirm"]'),
                 condition="clickable",
-            )  # リツイート確認ボタンを待機して取得
-            confirm_retweet_button.click()  # リツイート確認ボタンをクリック
-            logging.debug("リツイート確認をクリックしました。")
+            )
+            confirm_retweet_button.click()
+            logging.debug(
+                f"{self.account['username']} - リツイート確認をクリックしました"
+            )
         except Exception as e:
-            logging.error(
-                f"いいねやリツイート処理中にエラーが発生しました: {e}"
-            )  # エラーが発生した場合はログに記録
+            logging.warning(
+                f"{self.account['username']} - リツイート確認ボタンのクリック中にエラーが発生しました: {type(e).__name__} - {str(e)}"
+            )
 
-    # 特定の要素が表示されるまで待つメソッド
     def wait_for_element(self, locator, timeout=15, condition="presence"):
         logging.debug(
-            f"要素の待機を開始します。条件: {condition}, タイムアウト: {timeout}秒"
+            f"{self.account['username']} - 要素の待機を開始します。条件: {condition}, タイムアウト: {timeout}秒"
         )
-        if condition == "visible":
-            element = WebDriverWait(self.driver, timeout).until(
-                EC.visibility_of_element_located(locator)
+        try:
+            if condition == "visible":
+                element = WebDriverWait(self.driver, timeout).until(
+                    EC.visibility_of_element_located(locator)
+                )
+            elif condition == "clickable":
+                element = WebDriverWait(self.driver, timeout).until(
+                    EC.element_to_be_clickable(locator)
+                )
+            else:
+                element = WebDriverWait(self.driver, timeout).until(
+                    EC.presence_of_element_located(locator)
+                )
+            logging.debug(f"{self.account['username']} - 要素の待機が完了しました")
+            return element
+        except TimeoutException:
+            logging.warning(
+                f"{self.account['username']} - 要素の待機がタイムアウトしました。条件: {condition}, タイムアウト: {timeout}秒"
             )
-        elif condition == "clickable":
-            element = WebDriverWait(self.driver, timeout).until(
-                EC.element_to_be_clickable(locator)
-            )
-        else:
-            element = WebDriverWait(self.driver, timeout).until(
-                EC.presence_of_element_located(locator)
-            )
-        logging.debug("要素の待機が完了しました。")
-        return element
+            return None
 
-    # ブラウザを閉じるメソッド
     def close(self):
-        logging.debug("ブラウザを閉じる処理を開始します。")
-        time.sleep(5)  # 5秒待機
-        self.driver.quit()  # ブラウザを閉じる
-        logging.debug("ブラウザを閉じました。")
+        logging.debug(f"{self.account['username']} - ブラウザを閉じる処理を開始します")
+        self.driver.quit()
+        logging.debug(f"{self.account['username']} - ブラウザを閉じました")
 
 
-# アカウント情報👥
+# アカウント情報
 accounts = [
     {
         "username": config["ACCOUNTS"]["account1_username"],
@@ -180,9 +200,8 @@ accounts = [
 
 # 各アカウントでログインし、いいねとリツイートを行う
 for account in accounts:
-    logging.debug(f"{account['username']}での処理を開始します。")
-    bot = TwitterBot(account)  # TwitterBotオブジェクトを生成
-    bot.login()  # ログインメソッドを呼び出し
-    bot.like_and_retweet()  # いいねとリツイートメソッドを呼び出し
-    bot.close()  # ブラウザを閉じるメソッドを呼び出し
-    logging.debug(f"{account['username']}での処理が完了しました。")
+    bot = TwitterBot(account)
+    bot.login()
+    bot.like_and_retweet()
+    bot.close()
+    time.sleep(5)  # アカウントの切り替え間隔
